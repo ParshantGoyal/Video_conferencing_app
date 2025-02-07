@@ -3,7 +3,12 @@ const pool = require('./db');
 const createTables = async () => {
   try {
     await pool.query(
-    `DROP TABLE users;
+    `CREATE TABLE IF NOT EXISTS users (
+    user_id TEXT PRIMARY KEY,   
+    name TEXT NOT NULL,        
+    interests vector(1536)   
+);
+
 
 `
   );
