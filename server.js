@@ -10,7 +10,7 @@ require('dotenv').config();
 
 const app = express();
 const server = createServer(app);
-pp.use(cors({
+app.use(cors({
   origin: "*",
   methods: ["GET", "POST"],
   allowedHeaders: ["Content-Type", "Authorization"],
