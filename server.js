@@ -65,7 +65,7 @@ async function getHuggingFaceEmbedding(interests) {
     const response = await axios.post(
       "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2",
       { inputs: interests.join(", ") },
-      { headers: { Authorization: `Bearer YOUR_HF_API_KEY` } }
+      { headers: { Authorization: `hf_vmzGlUzgFAZulWUTxZAiMnLffmIWowDqAiY` } }
     );
 
     return response.data[0]; // Returns 384-d vector
