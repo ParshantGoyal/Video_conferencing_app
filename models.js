@@ -17,7 +17,7 @@ const createTables = async () => {
     console.error("Error creating tables:", err);
   } finally {
    // enableVector();
-    pool.end();
+   // pool.end();
   }
  
 };
