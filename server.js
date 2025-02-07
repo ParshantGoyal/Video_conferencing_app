@@ -7,6 +7,7 @@ const pool = require('./db')
 const { Pool } = require("pg");
 const { OpenAI } = require("openai");
 const cors = require("cors");
+const axios = require("axios");
 require('dotenv').config();
 
 const app = express();
@@ -29,7 +30,7 @@ createTables();
 
 // OpenAI for interest embeddings
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY});
-const axios = require("axios");
+
 
 async function getInterestEmbedding(interests, retries = 3) {
   if (!interests || !Array.isArray(interests) || interests.length === 0) {
