@@ -26,56 +26,84 @@ app.use(express.json());
 
 pool;
 createTables();
+
 // PostgreSQL Connection
 
 // OpenAI for interest embeddings
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY});
+import { pipeline } from "@xenova/transformers";
 
+// Load model once globally
+let embedder;
 
-async function getInterestEmbedding(interests, retries = 3) {
+async function getInterestEmbedding(interests) {
   if (!interests || !Array.isArray(interests) || interests.length === 0) {
     console.error("Invalid interests provided:", interests);
     return null;
   }
 
   try {
-    const response = await openai.embeddings.create({
-      model: "text-embedding-ada-002",
-      input: interests.join(", "),
-    });
-
-    return response.data[0].embedding;
-  } catch (error) {
-    if (error.status === 429 && retries > 0) {
-      console.error(`Rate limit exceeded. Retrying in 10 seconds... (${retries} attempts left)`);
-      await new Promise((resolve) => setTimeout(resolve, 10000)); // Wait 10 seconds
-      return getInterestEmbedding(interests, retries - 1); // Retry
-    } else {
-      console.error("OpenAI error:", error.response?.data || error.message);
-
-      // 🔥 Use Hugging Face as a Free Alternative
-      console.log("Switching to Hugging Face model...");
-      return getHuggingFaceEmbedding(interests);
+    // Load the model if not already loaded
+    if (!embedder) {
+      embedder = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
     }
-  }
-}
 
-// 🆓 Free Hugging Face Embedding (Alternative to OpenAI)
-async function getHuggingFaceEmbedding(interests) {
-  try {
-    const response = await axios.post(
-      "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2",
-      { inputs: interests.join(", ") },
-      
-      { headers: { Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}` } }
-    );
+    // Generate embeddings
+    const embeddings = await embedder(interests, { pooling: "mean", normalize: true });
 
-    return response.data[0]; // Returns 384-d vector
+    return embeddings[0]; // Return first vector (384-d)
   } catch (error) {
-    console.error("Hugging Face error:", error.response?.data || error.message);
+    console.error("Error generating embeddings:", error);
     return null;
   }
 }
+
+
+
+// async function getInterestEmbedding(interests, retries = 3) {
+//   if (!interests || !Array.isArray(interests) || interests.length === 0) {
+//     console.error("Invalid interests provided:", interests);
+//     return null;
+//   }
+
+//   try {
+//     const response = await openai.embeddings.create({
+//       model: "text-embedding-ada-002",
+//       input: interests.join(", "),
+//     });
+
+//     return response.data[0].embedding;
+//   } catch (error) {
+//     if (error.status === 429 && retries > 0) {
+//       console.error(`Rate limit exceeded. Retrying in 10 seconds... (${retries} attempts left)`);
+//       await new Promise((resolve) => setTimeout(resolve, 10000)); // Wait 10 seconds
+//       return getInterestEmbedding(interests, retries - 1); // Retry
+//     } else {
+//       console.error("OpenAI error:", error.response?.data || error.message);
+
+//       // 🔥 Use Hugging Face as a Free Alternative
+//       console.log("Switching to Hugging Face model...");
+//       return getHuggingFaceEmbedding(interests);
+//     }
+//   }
+// }
+
+// // 🆓 Free Hugging Face Embedding (Alternative to OpenAI)
+// async function getHuggingFaceEmbedding(interests) {
+//   try {
+//     const response = await axios.post(
+//       "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2",
+//       { inputs: interests.join(", ") },
+      
+//       { headers: { Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}` } }
+//     );
+
+//     return response.data[0]; // Returns 384-d vector
+//   } catch (error) {
+//     console.error("Hugging Face error:", error.response?.data || error.message);
+//     return null;
+//   }
+// }
 
 
 // async function getInterestEmbedding(interests) {
