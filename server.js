@@ -30,24 +30,32 @@ createTables();
 // OpenAI for interest embeddings
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY});
 
+
 async function getInterestEmbedding(interests) {
   if (!interests || !Array.isArray(interests) || interests.length === 0) {
     console.error("Invalid interests provided:", interests);
-    return null;  // Return null or a default vector
+    return null;
   }
 
   try {
     const response = await openai.embeddings.create({
       model: "text-embedding-ada-002",
-      input: interests.join(", "),  // Now safely joining
+      input: interests.join(", "),
     });
 
     return response.data[0].embedding;
   } catch (error) {
-    console.error("Error generating embeddings:", error);
-    return null;
+    if (error.status === 429) {
+      console.error("Rate limit exceeded. Retrying in 10 seconds...");
+      await new Promise((resolve) => setTimeout(resolve, 10000)); // Wait 10 seconds
+      return getInterestEmbedding(interests); // Retry
+    } else {
+      console.error("Error generating embeddings:", error);
+      return null;
+    }
   }
 }
+
 
 app.get("/",(req,res)=>{
 res.send('welocme to the site')
