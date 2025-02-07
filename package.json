@@ -17,7 +17,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "axios":"*",
-    " @xenova/transformers":"*",
+    "@xenova/transformers":"*",
     "firebase-admin": "^13.0.2",
     "jsonwebtoken": "^9.0.2",
     "openai": "^4.83.0",
