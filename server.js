@@ -30,16 +30,29 @@ createTables();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY});
 
 async function getInterestEmbedding(interests) {
-  const response = await openai.embeddings.create({
-    model: "text-embedding-ada-002",
-    input: interests.join(", "),
-  });
-  return response.data[0].embedding;
+  if (!interests || !Array.isArray(interests) || interests.length === 0) {
+    console.error("Invalid interests provided:", interests);
+    return null;  // Return null or a default vector
+  }
+
+  try {
+    const response = await openai.embeddings.create({
+      model: "text-embedding-ada-002",
+      input: interests.join(", "),  // Now safely joining
+    });
+
+    return response.data[0].embedding;
+  } catch (error) {
+    console.error("Error generating embeddings:", error);
+    return null;
+  }
 }
 
 app.get("/",(req,res)=>{
 res.send('welocme to the site')
 })
+
+
 
 // Store User Interest & Auto Start Matching
 app.post("/start", async (req, res) => {
