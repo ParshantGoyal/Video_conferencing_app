@@ -10,9 +10,15 @@ require('dotenv').config();
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+const io = new Server(server, { cors: {  origin: "https://random-chat-qrs3dfogl-parshant-goyals-projects.vercel.app", 
+  methods: "GET,POST",
+  credentials: true } });
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: "https://random-chat-qrs3dfogl-parshant-goyals-projects.vercel.app",
+  methods: "GET, POST",
+  credentials: true
+}));
 pool;
 createTables();
 // PostgreSQL Connection
