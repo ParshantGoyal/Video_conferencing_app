@@ -59,12 +59,12 @@ app.post("/start", async (req, res) => {
   const { username, interests } = req.body;
   const interestVector = await getInterestEmbedding(interests);
 
-  await db.query(
+  await pool.query(
     "INSERT INTO users (user_id, name, interests) VALUES ($1, $2, $3) ON CONFLICT (user_id) DO UPDATE SET interests = $3", 
     [username, username, interestVector]
   );
 
-  const { rows } = await db.query(
+  const { rows } = await pool.query(
     "SELECT user_id, name FROM users WHERE user_id != $1 ORDER BY interests <=> $2 ASC LIMIT 1;",
     [username, interestVector]
   );
