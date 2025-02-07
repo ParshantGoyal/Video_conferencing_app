@@ -11,8 +11,7 @@ require('dotenv').config();
 const app = express();
 const server = createServer(app);
 const allowedOrigins = [
-  "https://random-chat-qrs3dfogl-parshant-goyals-projects.vercel.app",
-  "https://random-chat-97l51ufxl-parshant-goyals-projects.vercel.app"
+  "https://videochat-lovat.vercel.app/"
 ];
 
 app.use(cors({
