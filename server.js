@@ -29,9 +29,9 @@ createTables();
 
 // OpenAI for interest embeddings
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY});
+const axios = require("axios");
 
-
-async function getInterestEmbedding(interests) {
+async function getInterestEmbedding(interests, retries = 3) {
   if (!interests || !Array.isArray(interests) || interests.length === 0) {
     console.error("Invalid interests provided:", interests);
     return null;
@@ -45,16 +45,63 @@ async function getInterestEmbedding(interests) {
 
     return response.data[0].embedding;
   } catch (error) {
-    if (error.status === 429) {
-      console.error("Rate limit exceeded. Retrying in 10 seconds...");
+    if (error.status === 429 && retries > 0) {
+      console.error(`Rate limit exceeded. Retrying in 10 seconds... (${retries} attempts left)`);
       await new Promise((resolve) => setTimeout(resolve, 10000)); // Wait 10 seconds
-      return getInterestEmbedding(interests); // Retry
+      return getInterestEmbedding(interests, retries - 1); // Retry
     } else {
-      console.error("Error generating embeddings:", error);
-      return null;
+      console.error("OpenAI error:", error.response?.data || error.message);
+
+      // 🔥 Use Hugging Face as a Free Alternative
+      console.log("Switching to Hugging Face model...");
+      return getHuggingFaceEmbedding(interests);
     }
   }
 }
+
+// 🆓 Free Hugging Face Embedding (Alternative to OpenAI)
+async function getHuggingFaceEmbedding(interests) {
+  try {
+    const response = await axios.post(
+      "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2",
+      { inputs: interests.join(", ") },
+      { headers: { Authorization: `Bearer YOUR_HF_API_KEY` } }
+    );
+
+    return response.data[0]; // Returns 384-d vector
+  } catch (error) {
+    console.error("Hugging Face error:", error.response?.data || error.message);
+    return null;
+  }
+}
+
+
+// async function getInterestEmbedding(interests) {
+//   if (!interests || !Array.isArray(interests) || interests.length === 0) {
+//     console.error("Invalid interests provided:", interests);
+//     return null;
+//   }
+
+//   try {
+//     const response = await openai.embeddings.create({
+//       model: "text-embedding-ada-002",
+//       input: interests.join(", "),
+//     });
+
+//     return response.data[0].embedding;
+//   } catch (error) {
+//     if (error.status === 429) {
+//       console.error("Rate limit exceeded. Retrying in 10 seconds...");
+//       await new Promise((resolve) => setTimeout(resolve, 10000)); // Wait 10 seconds
+//       return getInterestEmbedding(interests); // Retry
+//     } else {
+//       console.error("Error generating embeddings:", error);
+//       return null;
+//     }
+//   }
+// }
+
+
 
 
 app.get("/",(req,res)=>{
