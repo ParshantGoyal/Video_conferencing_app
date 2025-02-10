@@ -14,19 +14,19 @@ const { Pool } = pkg;
 
 import cors from 'cors';
 const app = express();
-app.use(cors({ origin: "*" }))
-// app.use(cors({
-//     origin: "https://bug-free-fishstick-979p7657qgpvh9rwg-3000.app.github.dev/",
-//     methods: ["GET", "POST", "PUT", "DELETE"],
-//     credentials: true // Allow cookies if needed
-//   }));
+// app.use(cors({ origin: "*" }))
+app.use(cors({
+    origin: "https://random-chat-sable.vercel.app/",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true // Allow cookies if needed
+  }));
 
 
 const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: "https://bug-free-fishstick-979p7657qgpvh9rwg-3000.app.github.dev/",
+        origin: "https://random-chat-sable.vercel.app/",
         methods: ["GET", "POST"]
       },
 });
