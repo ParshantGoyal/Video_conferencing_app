@@ -1,217 +1,99 @@
-const { v4: uuidv4 } = require("uuid");
-const express = require("express");
-const { Server } = require("socket.io");
-const { createServer } = require("http");
-const createTables =require('./models');
-const pool = require('./db')
-const { Pool } = require("pg");
-const { OpenAI } = require("openai");
-const cors = require("cors");
-const axios = require("axios");
-require('dotenv').config();
+/*
+FULL STACK RANDOM VIDEO CHAT APP
+Backend: Node.js (Express, Socket.io, PostgreSQL)
+Frontend: React (WebRTC, Socket.io)
+*/
 
+// BACKEND CODE (server.js)
+
+import express from 'express';
+import { Server } from 'socket.io';
+import http from 'http';
+import pkg from 'pg';
+const { Pool } = pkg;
+
+import cors from 'cors';
 const app = express();
-const server = createServer(app);
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
-}));
-const io = new Server(server, { cors: { origin: "*",
-  methods: ["GET", "POST"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true } });
+app.use(cors({ origin: "*" }))
+// app.use(cors({
+//     origin: "https://bug-free-fishstick-979p7657qgpvh9rwg-3000.app.github.dev/",
+//     methods: ["GET", "POST", "PUT", "DELETE"],
+//     credentials: true // Allow cookies if needed
+//   }));
+
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+    cors: {
+        origin: "https://bug-free-fishstick-979p7657qgpvh9rwg-3000.app.github.dev/",
+        methods: ["GET", "POST"]
+      },
+});
+
+
 app.use(express.json());
 
-pool;
-createTables();
+const pool = new Pool({
+  user: 'postgres',
+  host: 'localhost',
+  database: 'videocall',
+  password: 'yourpassword',
+  port: 5432,
+});
 
-// PostgreSQL Connection
+app.get('/',(req,res)=>{
+res.send('welcome to the home')
+})
 
-// OpenAI for interest embeddings
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY});
-import { pipeline } from "@xenova/transformers";
+const users = [];
 
-// Load model once globally
-let embedder;
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
 
-async function getInterestEmbedding(interests) {
-  if (!interests || !Array.isArray(interests) || interests.length === 0) {
-    console.error("Invalid interests provided:", interests);
-    return null;
+  socket.on('join', async ({ name, interests }) => {
+    const newUser = { id: socket.id, name, interests, socketId: socket.id };
+    users.push(newUser);
+    matchUsers(socket);
+  });
+
+  socket.on('offer', ({ offer, peerId }) => {
+    io.to(peerId).emit('offer', { offer });
+  });
+
+  socket.on('answer', ({ answer, peerId }) => {
+    io.to(peerId).emit('answer', { answer });
+  });
+
+  socket.on('ice-candidate', ({ candidate, peerId }) => {
+    io.to(peerId).emit('ice-candidate', { candidate });
+  });
+
+  socket.on('disconnect', () => {
+    const index = users.findIndex((user) => user.socketId === socket.id);
+    if (index !== -1) users.splice(index, 1);
+  });
+});
+
+function matchUsers(socket) {
+  const user = users.find((u) => u.socketId === socket.id);
+  if (!user) return;
+
+  let matchedUser = users.find(
+    (u) => u.socketId !== user.socketId && u.interests.some((interest) => user.interests.includes(interest))
+  );
+
+  if (!matchedUser) {
+    matchedUser = users.find((u) => u.socketId !== user.socketId);
   }
 
-  try {
-    // Load the model if not already loaded
-    if (!embedder) {
-      embedder = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
-    }
-
-    // Generate embeddings
-    const embeddings = await embedder(interests, { pooling: "mean", normalize: true });
-
-    return embeddings[0]; // Return first vector (384-d)
-  } catch (error) {
-    console.error("Error generating embeddings:", error);
-    return null;
+  if (matchedUser) {
+    io.to(user.socketId).emit('matched', { peerId: matchedUser.socketId });
+    io.to(matchedUser.socketId).emit('matched', { peerId: user.socketId });
   }
 }
 
-
-
-// async function getInterestEmbedding(interests, retries = 3) {
-//   if (!interests || !Array.isArray(interests) || interests.length === 0) {
-//     console.error("Invalid interests provided:", interests);
-//     return null;
-//   }
-
-//   try {
-//     const response = await openai.embeddings.create({
-//       model: "text-embedding-ada-002",
-//       input: interests.join(", "),
-//     });
-
-//     return response.data[0].embedding;
-//   } catch (error) {
-//     if (error.status === 429 && retries > 0) {
-//       console.error(`Rate limit exceeded. Retrying in 10 seconds... (${retries} attempts left)`);
-//       await new Promise((resolve) => setTimeout(resolve, 10000)); // Wait 10 seconds
-//       return getInterestEmbedding(interests, retries - 1); // Retry
-//     } else {
-//       console.error("OpenAI error:", error.response?.data || error.message);
-
-//       // 🔥 Use Hugging Face as a Free Alternative
-//       console.log("Switching to Hugging Face model...");
-//       return getHuggingFaceEmbedding(interests);
-//     }
-//   }
-// }
-
-// // 🆓 Free Hugging Face Embedding (Alternative to OpenAI)
-// async function getHuggingFaceEmbedding(interests) {
-//   try {
-//     const response = await axios.post(
-//       "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2",
-//       { inputs: interests.join(", ") },
-      
-//       { headers: { Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}` } }
-//     );
-
-//     return response.data[0]; // Returns 384-d vector
-//   } catch (error) {
-//     console.error("Hugging Face error:", error.response?.data || error.message);
-//     return null;
-//   }
-// }
-
-
-// async function getInterestEmbedding(interests) {
-//   if (!interests || !Array.isArray(interests) || interests.length === 0) {
-//     console.error("Invalid interests provided:", interests);
-//     return null;
-//   }
-
-//   try {
-//     const response = await openai.embeddings.create({
-//       model: "text-embedding-ada-002",
-//       input: interests.join(", "),
-//     });
-
-//     return response.data[0].embedding;
-//   } catch (error) {
-//     if (error.status === 429) {
-//       console.error("Rate limit exceeded. Retrying in 10 seconds...");
-//       await new Promise((resolve) => setTimeout(resolve, 10000)); // Wait 10 seconds
-//       return getInterestEmbedding(interests); // Retry
-//     } else {
-//       console.error("Error generating embeddings:", error);
-//       return null;
-//     }
-//   }
-// }
-
-
-
-
-app.get("/",(req,res)=>{
-res.send('welocme to the site')
-})
-
-
-
-// Store User Interest & Auto Start Matching
-// app.post("/start", async (req, res) => {
-//   const { username, interests } = req.body;
-//   const interestVector = await getInterestEmbedding(interests);
-
-//   await pool.query(
-//     "INSERT INTO users (user_id, name, interests) VALUES ($1, $2, $3) ON CONFLICT (user_id) DO UPDATE SET interests = $3", 
-//     [username, username, interestVector]
-//   );
-
-//   const { rows } = await pool.query(
-//     "SELECT user_id, name FROM users WHERE user_id != $1 ORDER BY interests <=> $2 ASC LIMIT 1;",
-//     [username, interestVector]
-//   );
-
-//   res.json(rows.length > 0 ? { match: rows[0] } : { message: "No match found!" });
-// });
-app.post("/start", async (req, res) => {
-  try {
-    const { username, interests } = req.body;
-    if (!username || !Array.isArray(interests) || interests.length === 0) {
-      return res.status(400).json({ error: "Invalid username or interests" });
-    }
-
-    // Generate user_id (UUID)
-    const user_id = uuidv4();
-
-    // Generate interest embedding
-    const interestVector = await getInterestEmbedding(interests);
-    if (!interestVector) {
-      return res.status(500).json({ error: "Failed to generate interest embedding" });
-    }
-
-    // Insert or update user in DB
-    await pool.query(
-      `INSERT INTO users (user_id, name, interests) 
-       VALUES ($1, $2, $3) 
-       ON CONFLICT (user_id) DO UPDATE 
-       SET name = EXCLUDED.name, interests = EXCLUDED.interests`,
-      [user_id, username, interestVector]
-    );
-
-    // Find the closest matching user
-    const { rows } = await pool.query(
-      `SELECT user_id, name FROM users 
-       WHERE user_id != $1 
-       ORDER BY interests <=> $2 
-       LIMIT 1;`,
-      [user_id, interestVector]
-    );
-
-    res.json(rows.length > 0 ? { match: rows[0] } : { message: "No match found!" });
-  } catch (error) {
-    console.error("Error in /start:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
+const PORT = 5000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
-
-
-
-
-
-// WebRTC Signaling
-io.on("connection", (socket) => {
-  socket.on("findMatch", async ({ username, interests }) => {
-    const match = await db.query("SELECT user_id FROM users WHERE user_id != $1 LIMIT 1", [username]);
-    if (match.rows.length > 0) {
-      socket.emit("matchFound", { peerId: match.rows[0].user_id });
-    }
-  });
-
-  socket.on("disconnect", () => console.log("User disconnected"));
-});
-
-server.listen(5000, () => console.log("Server running on port 5000"));
