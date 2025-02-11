@@ -4,7 +4,8 @@ import http from "http";
 import pkg from "pg";
 const { Pool } = pkg;
 import cors from "cors";
-const helmet = require("helmet");
+import helmet from "helmet";
+// const helmet = require("helmet");
 
 
 // Load environment variables
