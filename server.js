@@ -11,6 +11,12 @@ import cors from "cors";
 
 const app = express();
 const server = http.createServer(app);
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 app.use(cors({
     origin: "https://random-chat-sable.vercel.app",
@@ -25,6 +31,14 @@ app.use(cors({
 // });
 
 app.use(express.json());
+
+app.use((req, res, next) => {
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), display-capture=()" // Allow access
+  );
+  next();
+});
 
 app.get("/", (req, res) => {
     res.send("Welcome to Random Video Chat API");
