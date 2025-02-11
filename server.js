@@ -7,7 +7,7 @@ import cors from "cors";
 
 
 // Load environment variables
-dotenv.config();
+// dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
